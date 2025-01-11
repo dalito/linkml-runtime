@@ -3,6 +3,7 @@ import datetime
 import re
 from dataclasses import field
 from decimal import Decimal
+import sys
 from typing import Union, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -258,8 +259,10 @@ class XSDDate(str, TypedNode):
             value = value.value
         try:
             if not isinstance(value, datetime.date):
-                # value = datetime.date.fromisoformat(str(value))
-                value = isodate.parse_date(value)
+                if sys.version_info >= (3, 11):
+                    value = datetime.date.fromisoformat(str(value))
+                else:
+                    value = isodate.parse_date(value)
             return value.isoformat()
         except (TypeError, ValueError) as e:
             if is_strict():
@@ -275,8 +278,10 @@ class XSDDate(str, TypedNode):
         if not re.match(r'^\d{4}-\d{2}-\d{2}$', value):
             return False
         try:
-            # datetime.date.fromisoformat(str(value))
-            value = isodate.parse_date(value)
+            if sys.version_info >= (3, 11):
+                datetime.date.fromisoformat(str(value))
+            else:
+                value = isodate.parse_date(value)
         except ValueError:
             return False
         return True
@@ -291,11 +296,13 @@ class XSDDateTime(str, TypedNode):
             value = value.value
         try:
             if not isinstance(value, datetime.datetime):
-                # value = datetime.datetime.fromisoformat(value)      # Note that this handles non 'T' format as well
-                if "T" in str(value):
-                    value = isodate.parse_datetime(value)
+                if sys.version_info >= (3, 11):
+                    value = datetime.datetime.fromisoformat(value)      # Note that this handles non 'T' format as well
                 else:
-                    value = isodate.parse_datetime("T".join(value.strip().split(' ', 1)))
+                    if "T" in str(value):
+                        value = isodate.parse_datetime(value)
+                    else:
+                        value = isodate.parse_datetime("T".join(value.strip().split(' ', 1)))
             return value.isoformat()
         except (TypeError, ValueError) as e:
             if is_strict():
@@ -309,13 +316,15 @@ class XSDDateTime(str, TypedNode):
         if isinstance(value, datetime.datetime):
             value = value.isoformat()
         try:
-            # datetime.datetime.fromisoformat(value)
-            if "T" in str(value):
-                isodate.parse_datetime(value)
-            elif " " in value.strip():
-                isodate.parse_datetime("T".join(value.strip().split(' ', 1)))
-            else:
+            if sys.version_info >= (3, 11):
                 datetime.datetime.fromisoformat(value)
+            else:
+                if "T" in str(value):
+                    isodate.parse_datetime(value)
+                elif " " in value.strip():
+                    isodate.parse_datetime("T".join(value.strip().split(' ', 1)))
+                else:
+                    datetime.datetime.fromisoformat(value)
         except (ValueError, TypeError):
             return False
         return True
